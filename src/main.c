@@ -26,5 +26,12 @@
 int main(void)
 {
 
+	 SystemInit();
+
+	 RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB |
+				 	 	 	RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD, ENABLE);
+
+
+
 	for(;;);
 }
