@@ -22,14 +22,14 @@
 #include "stm32f4xx_spi.h"
 #include "stm32f4xx_conf.h"
 #include "misc.h"
+#include "biblioteka.h"
 
 int main(void)
 {
 
 	 SystemInit();
 
-	 RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB |
-				 	 	 	RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD, ENABLE);
+	 InitAllRCC();
 
 	 GPIO_InitTypeDef leds;
 	 leds.GPIO_Pin = GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15;
