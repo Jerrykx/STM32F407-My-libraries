@@ -1,0 +1,271 @@
+/**
+  ******************************************************************************
+  * @file    main.c
+  * @author  jaroslaw-wieczorek
+  * @version V1.0
+  * @date    01-December-2013
+  * @brief   Default main function.
+  ******************************************************************************
+*/
+
+#include "audio.h"
+#include "stm32f4xx.h"
+#include "stm32f4xx_tim.h"
+#include "stm32f4xx_conf.h"
+#include "stm32f4xx_dac.h"
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_exti.h"
+#include "stm32f4xx_adc.h"
+#include "stm32f4xx_syscfg.h"
+#include "stm32f4_discovery.h"
+
+
+uint32_t  ADC_result = 0;
+int i = 0;
+double ADC_scaled_volt;
+
+void main(void)
+{
+
+	SystemInit();
+    /* GPIOD Periph clock enable */
+
+	//PODŁĄCZENIE WYŚWIETLACZA - GPIO PINY
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE); //USERT GPIO
+
+    //PODŁĄCZENIE TIMERA, SYSCFG, ADC
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE); // zegar dla modułu ADC1
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE); // zegar dla DAC
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE); //USART
+
+    //inicjalizacja wejścia ADC
+    GPIO_InitTypeDef ADC1_Pin_1;
+    ADC1_Pin_1.GPIO_Pin = GPIO_Pin_1;
+    ADC1_Pin_1.GPIO_Mode = GPIO_Mode_AN;
+    ADC1_Pin_1.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOA, &ADC1_Pin_1);
+
+
+    //inicjalizacja wyjścia DAC
+    GPIO_InitTypeDef DAC_Pin_4;
+    DAC_Pin_4.GPIO_Pin = GPIO_Pin_4;
+    DAC_Pin_4.GPIO_Mode = GPIO_Mode_AN;
+    DAC_Pin_4.GPIO_Speed = GPIO_Speed_100MHz;
+    DAC_Pin_4.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOA, &DAC_Pin_4);
+
+    GPIO_InitTypeDef  LEDS;
+    /* Configure PD12, PD13, PD14 and PD15 in output pushpull mode */
+    LEDS.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+    LEDS.GPIO_Mode = GPIO_Mode_OUT;
+    LEDS.GPIO_OType = GPIO_OType_PP;
+    LEDS.GPIO_Speed = GPIO_Speed_100MHz;
+    LEDS.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOD, &LEDS);
+
+    GPIO_ResetBits(GPIOD, LEDS.GPIO_Pin);
+
+    GPIO_InitTypeDef USART_C_Pin_10_11;
+    USART_C_Pin_10_11.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+    USART_C_Pin_10_11.GPIO_Mode = GPIO_Mode_AF;
+    USART_C_Pin_10_11.GPIO_OType = GPIO_OType_PP;
+    USART_C_Pin_10_11.GPIO_PuPd = GPIO_PuPd_UP;
+    USART_C_Pin_10_11.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOC, &USART_C_Pin_10_11);
+    // ustawienie funkcji alternatywnej dla pinów (USART)
+    GPIO_PinAFConfig(GPIOC, GPIO_PinSource10, GPIO_AF_USART3);
+    GPIO_PinAFConfig(GPIOC, GPIO_PinSource11, GPIO_AF_USART3);
+
+
+
+    // USART3 !!
+    USART_InitTypeDef USART_3;
+    // predkosc transmisji (mozliwe standardowe opcje: 9600, 19200, 38400, 57600, 115200, ...)
+    USART_3.USART_BaudRate = 115200;
+    // długość słowa (USART_WordLength_8b lub USART_WordLength_9b)
+    USART_3.USART_WordLength = USART_WordLength_8b;
+    // liczba bitów stopu (USART_StopBits_1, USART_StopBits_0_5, USART_StopBits_2, USART_StopBits_1_5)
+    USART_3.USART_StopBits = USART_StopBits_1;
+    // sprawdzanie parzystości (USART_Parity_No, USART_Parity_Even, USART_Parity_Odd)
+    USART_3.USART_Parity = USART_Parity_No;
+    // sprzętowa kontrola przepływu (USART_HardwareFlowControl_None, USART_HardwareFlowControl_RTS, USART_HardwareFlowControl_CTS, USART_HardwareFlowControl_RTS_CTS)
+    USART_3.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    // tryb nadawania/odbierania (USART_Mode_Rx, USART_Mode_Rx )
+    USART_3.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    // konfiguracja
+    USART_Init(USART3, &USART_3);
+
+    // wlaczenie ukladu USART !!
+    USART_Cmd(USART3, ENABLE);
+
+    // NVCI DLA USART3 !!
+    NVIC_InitTypeDef NVIC_USART3;
+    // wlaczenie przerwania związanego z odebraniem danych (pozostale zrodla przerwan zdefiniowane sa w pliku stm32f4xx_usart.h)
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+    NVIC_USART3.NVIC_IRQChannel = USART3_IRQn;
+    NVIC_USART3.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_USART3.NVIC_IRQChannelSubPriority = 0;
+    NVIC_USART3.NVIC_IRQChannelCmd = ENABLE;
+    // konfiguracja kontrolera przerwan
+    NVIC_Init(&NVIC_USART3);
+    // wlaczenie przerwan od ukladu USART
+    NVIC_EnableIRQ(USART3_IRQn);
+
+
+    // WSPOLNA KONFIGURACJA DLA WSZYSTKICH UKŁADOW ADC !
+    ADC_CommonInitTypeDef ADC_Common;
+    // niezależny tryb pracy przetworników
+    ADC_Common.ADC_Mode = ADC_Mode_Independent;
+    // zegar główny podzielony przez 2
+    ADC_Common.ADC_Prescaler = ADC_Prescaler_Div2;
+    // opcja istotna tylko dla trybu multi ADC
+    ADC_Common.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
+    // czas przerwy pomiędzy kolejnymi konwersjami
+    ADC_Common.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
+    ADC_CommonInit(&ADC_Common);
+
+
+    ADC_InitTypeDef ADC_1;
+    //ustawienie rozdzielczości przetwornika na maksymalną (12 bitów)
+    //TO JEST BARDZO WAŻNE dla okreslania jaki prąd wychodzi na wyjściu ADC
+    ADC_1.ADC_Resolution = ADC_Resolution_12b;
+    //wyłączenie trybu skanowania (odczytywać będziemy jedno wejście ADC
+    //w trybie skanowania automatycznie wykonywana jest konwersja na wielu //wejściach/kanałach)
+    ADC_1.ADC_ScanConvMode = DISABLE;
+    //włączenie ciągłego trybu pracy
+    ADC_1.ADC_ContinuousConvMode = ENABLE;
+    //wyłączenie zewnętrznego wyzwalania
+    //konwersja może być wyzwalana timerem, stanem wejścia itd. (szczegóły w //dokumentacji)
+    ADC_1.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
+    ADC_1.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+    //wartość binarna wyniku będzie podawana z wyrównaniem do prawej
+    //funkcja do odczytu stanu przetwornika ADC zwraca wartość 16-bitową
+    //dla przykładu, wartość 0xFF wyrównana w prawo to 0x00FF, w lewo 0x0FF0
+    ADC_1.ADC_DataAlign = ADC_DataAlign_Right;
+    //liczba konwersji równa 1, bo 1 kanał
+    ADC_1.ADC_NbrOfConversion = 1;
+    // zapisz wypełnioną strukturę do rejestrów przetwornika numer 1
+    ADC_Init(ADC1, &ADC_1);
+
+    // KONFIGURACJA UKŁADU
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_84Cycles);
+    ADC_Cmd(ADC1, ENABLE);
+
+    //
+    //
+    //
+    //		OBLICZANIE NAPIĘCIA Z ADC: (x to wartość z ADC)
+    //				x = 512
+    //				  3V
+    //			ADC - 12bitowy
+    //		(512/4095) * 3v = ~3/8V
+    //
+    //
+    //		PRZESKALOWANIE ZAKRESU OD 0 DO 2,95 V
+    //				(x/4095)*2,95 = <0-2,95>
+    //
+    //
+    //
+    //
+
+    DAC_InitTypeDef DAC_1;
+    //wyłączenie zewnętrznego wyzwalania
+    //konwersja może być wyzwalana timerem, stanem wejścia itd. (szczegóły w dokumentacji)
+    DAC_1.DAC_Trigger = DAC_Trigger_None;
+    //nast. 2 linie - wyłączamy generator predefiniowanych przebiegów //wyjściowych (wartości zadajemy sami, za pomocą odpowiedniej funkcji)
+    DAC_1.DAC_WaveGeneration = DAC_WaveGeneration_None;
+    DAC_1.DAC_LFSRUnmask_TriangleAmplitude = DAC_LFSRUnmask_Bit0;
+    //włączamy buforowanie sygnału wyjściowego
+    DAC_1.DAC_OutputBuffer = DAC_OutputBuffer_Enable;
+    DAC_Init(DAC_Channel_1, &DAC_1);
+
+
+    DAC_Cmd(DAC_Channel_1, ENABLE);
+
+    //
+    //
+    //	DAC UWAGA
+    //	Przetwornik ma rozdzielczość 12 bitów,
+    //	więc ustawienie maksymalnej wartości odbywa się następująco
+    //	(jako wartości podajemy liczbę 16-bitową wyrównaną do prawej):
+    //
+    //	DAC_SetChannel1Data(DAC_Align_12b_R, 0xFFF);
+    //
+    //	Korzystając z powyższej funkcji możliwe jest
+    //	zmienianie wartości generowanej przez moduł DAC.
+    //
+    //
+    //
+
+    DAC_SetChannel1Data(DAC_Align_12b_R, 0xFFF);
+
+				// uruchomienie
+
+
+	TIM_TimeBaseInitTypeDef TIM_4;
+	TIM_4.TIM_Period = 899;
+	TIM_4.TIM_Prescaler = 999;
+	TIM_4.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_4.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM4, &TIM_4);
+
+	TIM_Cmd(TIM4, ENABLE);
+
+    while(1)
+    {
+    	 ADC_SoftwareStartConv(ADC1);
+// while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
+    	 ADC_result = ADC_GetConversionValue(ADC1);
+    	 ADC_scaled_volt = (ADC_result/4095)*2.95;
+
+    	 if ((int)ADC_scaled_volt < 10)
+    	 {
+    		 GPIO_ResetBits(GPIOD, LEDS.GPIO_Pin);
+    	 }
+    	 if ((int)ADC_result <= 1400 && (int)ADC_result > 300)
+    	 {
+    	    GPIO_SetBits(GPIOD, GPIO_Pin_12);
+    	 }
+    	 if ((int)ADC_result <= 2500 && (int)ADC_result > 1400)
+    	 {
+    	     GPIO_SetBits(GPIOD, GPIO_Pin_13);
+    	 }
+    	 if ((int)ADC_result <=3600 && (int)ADC_result > 2500)
+    	 {
+    	     GPIO_SetBits(GPIOD, GPIO_Pin_14);
+    	 }
+    	 if ((int)ADC_result <=4095 && (int)ADC_result > 3600)
+    	 {
+    	     GPIO_SetBits(GPIOD, GPIO_Pin_15);
+    	 }
+
+
+    }
+}
+    void  TIM4_IRQHandler(void){
+    		if(TIM_GetFlagStatus(TIM4, TIM_FLAG_Update)) {
+    	 		 i++;
+    	 		 u8 value = rawAudio[i];
+    	 		 if (i >= 123200){
+    	 			 i=0;
+    	 		 }
+    	    	 DAC_SetChannel1Data(DAC_Align_12b_R,value);
+    	    }
+           	TIM_ClearFlag(TIM4, TIM_FLAG_Update);
+
+    }
+
+    void USART3_IRQHandler(void)
+    {
+    	// sprawdzenie flagi zwiazanej z odebraniem danych przez USART
+    	if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
+        {
+    		// odebrany bajt znajduje sie w rejestrze USART3->DR
+        }
+    }
+

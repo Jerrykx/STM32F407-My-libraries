@@ -1,0 +1,90 @@
+#include "stdlib.h"
+#include "stm32f4xx.h"
+#include "stm32f4xx_conf.h"
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_gpio.h"
+#include "stm32f4_discovery.h"
+#include "stm32f4xx_tim.h"
+#include "display_8x4.h"
+#include "mylib.h"
+
+
+GPIO_InitTypeDef  GPIO_LED;
+GPIO_InitTypeDef  DISPLAY_LED;
+unsigned int counter = 0;
+
+
+static __IO uint32_t TimingDelay = 0;
+
+void Delay(uint32_t time){
+	TimingDelay = time;
+	while(TimingDelay!=0);
+}
+
+void SysTick_Handler(void){
+	if(TimingDelay!=0x00)
+		TimingDelay--;
+}
+
+int main(void)
+{
+	// ustawienie trybu pracy priorytetów przerwań
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+
+	NVIC_InitTypeDef nvic;
+	nvic.NVIC_IRQChannel = TIM3_IRQn;						// priorytet główny
+	nvic.NVIC_IRQChannelPreemptionPriority = 0x00;			// numer przerwania
+	nvic.NVIC_IRQChannelSubPriority = 0x00;					// subpriorytet
+	nvic.NVIC_IRQChannelCmd = ENABLE;						// uruchom dany kanał
+	NVIC_Init(&nvic);										// zapisz wypełnioną strukturę do rejestrów
+
+
+	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);				// zezwolenie na przerwania od przepełnienia dla timera 3
+	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);				// uruchomienie
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);	// 84MHz = 84000000Hz
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+	TIM_TimeBaseStructure.TIM_Period = 8399;
+	TIM_TimeBaseStructure.TIM_Prescaler = 9999;
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+
+
+	TIM_Cmd(TIM3, ENABLE);
+
+	//SysTick_Config(SystemCoreClock / 10000);
+
+
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);	    // GPIOD Periph clock enable
+
+    // Configure PD12, PD13, PD14 and PD15 in output pushpull mode
+    GPIO_LED.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+    GPIO_LED.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_LED.GPIO_OType = GPIO_OType_PP;
+    GPIO_LED.GPIO_Speed = GPIO_Speed_100MHz;
+    GPIO_LED.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOD, &GPIO_LED);
+
+
+    // Configure PD12, PD13, PD14 and PD15 in output pushpull mode
+    DISPLAY_LED.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1| GPIO_Pin_2|GPIO_Pin_3| GPIO_Pin_4;
+    DISPLAY_LED.GPIO_Mode = GPIO_Mode_OUT;
+    DISPLAY_LED.GPIO_OType = GPIO_OType_PP;
+    DISPLAY_LED.GPIO_Speed = GPIO_Speed_100MHz;
+    DISPLAY_LED.GPIO_PuPd = GPIO_PuPd_DOWN;
+    GPIO_Init(GPIOA, &DISPLAY_LED);
+
+    GPIO_SetBits(GPIOA, GPIO_Pin_1);
+    GPIO_ResetBits(GPIOA, GPIO_PinSource0);
+
+
+
+
+    for(;;)
+    {
+
+
+
+    }
+}

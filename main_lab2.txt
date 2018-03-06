@@ -1,0 +1,229 @@
+/**
+  ******************************************************************************
+  * @file    main.c
+  * @author  Ac6
+  * @version V1.0
+  * @date    01-December-2013
+  * @brief   Default main function.
+  ******************************************************************************
+*/
+
+
+#include "stm32f4xx.h"
+#include "stm32f4xx_conf.h"
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_gpio.h"
+#include "stm32f4_discovery.h"
+
+unsigned int zmienna;
+
+// Pole GPIO_Pin zawiera informację o tym, które wyprowadzenia portu maja zostać zainicjalizowane.
+// Pole GPIO_Mode zawiera informację o trybie działania wyprowadzenia
+
+// GPIO_Mode_IN - wejście binarne
+    // GPIO_Mode_OUT - wyjście binarne
+    // GPIO_Mode_AF - funkcja alternatywna
+    // GPIO_Mode_AN - wejście analogowe
+
+// Pole GPIO_OType zawiera informację o typie wyjścia
+    // GPIO_OType_PP - wyjście komplementarne
+    // GPIO_OType_OD - wyjście z otwartym drenem
+
+// Pole GPIO_Speed informuje o maksymalnej dozwolonej prędkości przełączania wyprowadzeń
+    // GPIO_Speed_2MHz
+    // GPIO_Speed_25MHz
+    // GPIO_Speed_50MHz
+    // GPIO_Speed_100MHz
+
+// Pole GPIO_PuPd zawiera konfigurację rodzaju podciągania wyprowadzenia
+    // GPIO_PuPd_NOPULL - brak podciągania
+    // GPIO_PuPd_UP - podciąganie do napięcia zasilania
+    // GPIO_PuPd_DOWN - ściąganie do masy
+
+//'1' - GPIO_SetBits, ‘0’ - GPIO_ResetBits.
+//GPIO_ReadInputDataBit ODCZYT STANU PINU
+
+// zapalenie diody na przycisk !!
+// Diody - out mode, no pull;
+// Przycisk - in mode, PuPd_UP;
+// if(!GPIO_ReadInputDataBit)SetBits
+
+void zad1();
+void zad2();
+
+void main_lab2(void)
+{
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+
+	//zad1();
+	//zad2();
+	//zad3();
+	//zad4();
+}
+
+void zad1()
+{
+		/* Configure PD12, PD13, PD14 and PD15 in output pushpull mode */
+		GPIO_InitTypeDef GPIO_InitStructure;
+		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+		GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+
+	    for(;;)
+	    {
+	        GPIO_SetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15);
+	        for (zmienna=0;zmienna<1000000;zmienna++);
+	        GPIO_ResetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15);
+	        for (zmienna=0;zmienna<1000000;zmienna++);
+	    }
+
+}
+
+
+void zad2()
+{
+	GPIO_InitTypeDef leds;
+	leds.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+	leds.GPIO_Mode = GPIO_Mode_OUT;
+	leds.GPIO_OType = GPIO_OType_PP;
+	leds.GPIO_Speed = GPIO_Speed_100MHz;
+	leds.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &leds);
+
+	GPIO_InitTypeDef key;
+	key.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2| GPIO_Pin_3;
+	key.GPIO_Mode = GPIO_Mode_IN;
+	key.GPIO_Speed = GPIO_Speed_100MHz;
+	key.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &key);
+
+
+	for(;;)
+	{
+		if(!GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1))
+				GPIO_SetBits(GPIOD, GPIO_Pin_12);
+			else
+				GPIO_ResetBits(GPIOD, GPIO_Pin_12);
+
+		if(!GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_2))
+				GPIO_SetBits(GPIOD, GPIO_Pin_13);
+			else
+				GPIO_ResetBits(GPIOD, GPIO_Pin_13);
+
+		if(!GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_3))
+				GPIO_SetBits(GPIOD, GPIO_Pin_14);
+			else
+				GPIO_ResetBits(GPIOD, GPIO_Pin_14);
+	}
+}
+
+
+void zad3()
+{
+	GPIO_InitTypeDef leds;
+	leds.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+	leds.GPIO_Mode = GPIO_Mode_OUT;
+	leds.GPIO_OType = GPIO_OType_PP;
+	leds.GPIO_Speed = GPIO_Speed_100MHz;
+	leds.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &leds);
+
+	GPIO_InitTypeDef key;
+	key.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2| GPIO_Pin_3;
+	key.GPIO_Mode = GPIO_Mode_IN;
+	key.GPIO_Speed = GPIO_Speed_100MHz;
+	key.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &key);
+
+	for(;;)
+	{
+		if(!GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1))
+				GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
+
+		if(!GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_2))
+				GPIO_ToggleBits(GPIOD, GPIO_Pin_13);
+
+		if(!GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_3))
+				GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+
+	}
+}
+
+
+void zad4()
+{
+	GPIO_InitTypeDef leds;
+	leds.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+	leds.GPIO_Mode = GPIO_Mode_OUT;
+	leds.GPIO_OType = GPIO_OType_PP;
+	leds.GPIO_Speed = GPIO_Speed_100MHz;
+	leds.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &leds);
+
+	GPIO_InitTypeDef key;
+	key.GPIO_Pin = GPIO_Pin_1;
+	key.GPIO_Mode = GPIO_Mode_IN;
+	key.GPIO_Speed = GPIO_Speed_100MHz;
+	key.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &key);
+
+	int counter=0;
+	for(;;)
+	{
+		if(!GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1))
+		{
+			counter++;
+			for(int i=0; i<10000000; i++);
+			switch(counter)
+			{
+				case 1:{
+					GPIO_SetBits(GPIOD, GPIO_Pin_12);
+					break;
+				}
+				case 2:{
+					GPIO_SetBits(GPIOD, GPIO_Pin_13);
+					break;
+				}
+				case 3:{
+					GPIO_SetBits(GPIOD, GPIO_Pin_14);
+					break;
+				}
+				case 4:{
+					GPIO_SetBits(GPIOD, GPIO_Pin_15);
+					break;
+				}
+				default:{
+					GPIO_ResetBits(GPIOD, leds.GPIO_Pin);
+					counter=0;
+					break;
+				}
+			}
+		}
+	}
+}
+
+
+void zad5()
+{
+	GPIO_InitTypeDef leds;
+	leds.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+	leds.GPIO_Mode = GPIO_Mode_OUT;
+	leds.GPIO_OType = GPIO_OType_PP;
+	leds.GPIO_Speed = GPIO_Speed_100MHz;
+	leds.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &leds);
+
+	GPIO_InitTypeDef key;
+	key.GPIO_Pin = GPIO_Pin_1;
+	key.GPIO_Mode = GPIO_Mode_IN;
+	key.GPIO_Speed = GPIO_Speed_100MHz;
+	key.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &key);
+
+}

@@ -1,0 +1,69 @@
+/**
+  ******************************************************************************
+  * @file    main.c
+  * @author  Ac6
+  * @version V1.0
+  * @date    01-December-2013
+  * @brief   Default main function.
+  ******************************************************************************
+*/
+
+
+#include "stm32f4xx.h"
+#include "stm32f4xx_tim.h"
+#include "stm32f4xx_conf.h"
+#include "stm32f4xx_syscfg.h"
+#include "stm32f4_discovery.h"
+
+unsigned int zmienna;
+unsigned int counter;
+
+void main(void)
+{
+	SystemInit();
+    /* GPIOD Periph clock enable */
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+
+
+    GPIO_InitTypeDef  LEDS;
+    /* Configure PD12, PD13, PD14 and PD15 in output pushpull mode */
+    LEDS.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+    LEDS.GPIO_Mode = GPIO_Mode_OUT;
+    LEDS.GPIO_OType = GPIO_OType_PP;
+    LEDS.GPIO_Speed = GPIO_Speed_100MHz;
+    LEDS.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOD, &LEDS);
+
+    TIM_TimeBaseInitTypeDef TIM;
+    TIM.TIM_Prescaler = 8399;
+    TIM.TIM_Period = 9999;
+
+    TIM.TIM_ClockDivision = TIM_CKD_DIV1;
+    TIM.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM.TIM_RepetitionCounter = 0;
+
+    TIM_Cmd(TIM4, ENABLE);
+    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+
+    while(1)
+    {
+    	counter = TIM_GetCounter(TIM4);
+
+    	if(counter == 4500){
+    		GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
+    	}
+    }
+//else if (counter == 6000){
+ //   		GPIO_ResetBits(GPIOD, GPIO_Pin_15);
+   // 	}
+ //   }
+
+    if(TIM_GetFlagStatus(TIM4, TIM_FLAG_Update)) {
+
+
+        		TIM_ClearFlag(TIM4, TIM_FLAG_Update);
+
+    }
+
+}

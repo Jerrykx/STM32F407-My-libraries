@@ -1,0 +1,139 @@
+/**
+  ******************************************************************************
+  * @file    main.c
+  * @author  Ac6
+  * @version V1.0
+  * @date    01-December-2013
+  * @brief   Default main function.
+  ******************************************************************************
+*/
+
+
+#include "stm32f4xx.h"
+#include "stm32f4xx_tim.h"
+#include "stm32f4xx_conf.h"
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_exti.h"
+#include "stm32f4xx_syscfg.h"
+#include "stm32f4_discovery.h"
+
+
+void main(void)
+{
+	SystemInit();
+    /* GPIOD Periph clock enable */
+
+	//PODŁĄCZENIE WYŚWIETLACZA
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+
+
+    // KOFIGURACJA PRZERWANIA DLA EXTI LINE_1 GPIO D !!
+
+    NVIC_InitTypeDef NVIC_InitStructure;
+    // numer przerwania
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
+    // priorytet główny
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+    // subpriorytet
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+    // uruchom dany kanał
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    // zapisz wypełnioną strukturę do rejestrów
+    NVIC_Init(&NVIC_InitStructure);
+
+    EXTI_InitTypeDef EXTI_InitStructure;
+    // wybór numeru aktualnie konfigurowanej linii przerwań
+    EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+    // wybór trybu - przerwanie bądź zdarzenie
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    // wybór zbocza, na które zareaguje przerwanie
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    // uruchom daną linię przerwań
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    // zapisz strukturę konfiguracyjną przerwań zewnętrznych do rejestrów
+    EXTI_Init(&EXTI_InitStructure);
+
+    // podłączenie danego pinu portu do kontrolera przerwań
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
+
+
+
+    // PODŁĄCZENIE PRZYCISKU
+
+    GPIO_InitTypeDef USER_BUTTON_A_Pin_0;
+    USER_BUTTON_A_Pin_0.GPIO_Pin = GPIO_Pin_0;
+    USER_BUTTON_A_Pin_0.GPIO_Mode = GPIO_Mode_IN;
+    USER_BUTTON_A_Pin_0.GPIO_Speed = GPIO_Speed_100MHz;
+    USER_BUTTON_A_Pin_0.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOA, &USER_BUTTON_A_Pin_0);
+
+
+    // PODŁĄCZENIE WYŚWIETLACZA Z WYBROEM SEGMENTU (ŚWIECI !!!)
+
+    GPIO_InitTypeDef  DISPLAY_1;
+    DISPLAY_1.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2;
+    DISPLAY_1.GPIO_Mode = GPIO_Mode_OUT;
+    DISPLAY_1.GPIO_OType = GPIO_OType_PP;
+    DISPLAY_1.GPIO_Speed = GPIO_Speed_100MHz;
+    DISPLAY_1.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOA, &DISPLAY_1);
+
+    GPIO_ResetBits(GPIOA, DISPLAY_1.GPIO_Pin);
+    GPIO_SetBits(GPIOA, GPIO_Pin_1);
+
+    GPIO_InitTypeDef  DISPLAY_2;
+    DISPLAY_2.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9| GPIO_Pin_10;
+    DISPLAY_2.GPIO_Pin |= GPIO_Pin_11| GPIO_Pin_12| GPIO_Pin_13| GPIO_Pin_14;
+    DISPLAY_2.GPIO_Mode = GPIO_Mode_OUT;
+    DISPLAY_2.GPIO_OType = GPIO_OType_PP;
+    DISPLAY_2.GPIO_Speed = GPIO_Speed_100MHz;
+    DISPLAY_2.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOE, &DISPLAY_2);
+
+    GPIO_ResetBits(GPIOE, DISPLAY_2.GPIO_Pin);
+/*
+    TIM_TimeBaseInitTypeDef TIM;
+    TIM.TIM_Prescaler = 8399;
+    TIM.TIM_Period = 9999;
+    TIM.TIM_ClockDivision = TIM_CKD_DIV1;
+    TIM.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM.TIM_RepetitionCounter = 0;
+
+    TIM_Cmd(TIM4, ENABLE);
+    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+*/
+    while(1)
+    {
+
+    }
+
+
+
+}
+
+void  TIM4_IRQHandler(void){
+		if(TIM_GetFlagStatus(TIM4, TIM_FLAG_Update)) {
+
+
+       	TIM_ClearFlag(TIM4, TIM_FLAG_Update);
+
+}
+}
+
+
+
+void EXTI0_IRQHandler(void)
+{
+        if(EXTI_GetITStatus(EXTI_Line0) != RESET)
+        {
+        	GPIO_ToggleBits(GPIOA, GPIO_Pin_1);
+        	GPIO_ToggleBits(GPIOA, GPIO_Pin_2);
+        	EXTI_ClearITPendingBit(EXTI_Line0);
+      	}
+}
